@@ -1,0 +1,45 @@
+services:
+  assets_mongodb:
+    image: mongo
+    container_name: assets_mongodb
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=mongo
+    #   - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - assets_mongo_databse:/data/db
+    networks:
+      - mongodb-services
+    ports:
+      - 27017:27017
+
+  mongo-express:
+    image: mongo-express
+    depends_on:
+      - assets_mongodb
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=assets_mongodb
+      - ME_CONFIG_BASICAUTH_USERNAME=mongo
+      - ME_CONFIG_BASICAUTH_PASSWORD=password
+    networks:
+      - mongodb-services
+    ports:
+      - 8081:8081
+
+  assets_microservice:
+    build: ./assets-service
+    ports:
+      - 3004:3004
+    environment:
+      - DATABASE_URL=mongodb://assets_mongodb:27017/
+    volumes:
+      - ./assets-service/src:/usr/src/app/src
+    command: npm run start:dev
+    networks:
+      - mongodb-services
+
+networks:
+  mongodb-services:
+    driver: bridge
+
+volumes:
+  assets_mongo_databse:

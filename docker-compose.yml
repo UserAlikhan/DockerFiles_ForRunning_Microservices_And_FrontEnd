@@ -1,0 +1,191 @@
+services:
+  users_db:
+    image: postgres
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: Users
+    volumes:
+      - users_database:/data/db
+
+  drawn_objects_db:
+    image: postgres
+    ports:
+      - 5431:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: Drawn_Objects
+    volumes:
+      - drawn_objects_database:/data/db
+
+  buy_orders_db:
+    image: postgres
+    ports:
+      - 5430:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: Buy_Orders
+    volumes:
+      - buy_orders_database:/data/db
+
+  assets_mongodb:
+    image: mongo
+    container_name: assets_mongodb
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=mongo
+    #   - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - assets_mongo_databse:/data/db
+    ports:
+      - 27017:27017
+
+  backtesting_mongodb:
+    image: mongo
+    container_name: backtesting_mongodb
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=mongo
+    #   - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - backtesting_mongo_database:/data/db
+    ports:
+      - 27018:27017
+  
+  users_microservice:
+    build: ./users-service
+    ports:
+      - 3001:3001
+    volumes:
+      - ./users-service/src:/usr/src/app/src
+    command: npm run start:dev
+
+  drawn_objects_microservice:
+    build: ./drawn-objects-service
+    ports:
+      - 3002:3002
+    volumes:
+      - ./drawn-objects-service/src:/usr/src/app/src
+    command: npm run start:dev
+
+  buy_orders_microservice:
+    build: ./buy-orders-service
+    ports:
+      - 3003:3003
+    volumes:
+      - ./buy-orders-service/src:/usr/src/app/src
+    command: npm run start:dev
+
+  assets_microservice:
+    build: ./assets-service
+    ports:
+      - 3004:3004
+    depends_on:
+      - assets_mongodb
+    environment:
+      - DATABASE_URL=mongodb://assets_mongodb:27017/
+    volumes:
+      - ./assets-service/src:/usr/src/app/src
+    command: npm run start:dev
+
+  backtesting_microservice:
+    build: ./backtesting-service
+    ports:
+      - 3005:3005
+    depends_on:
+      - backtesting_mongodb
+    environment:
+      - DATABASE_URL=mongodb://backtesting_mongodb:27017/
+    volumes:
+      - ./backtesting-service/src:/usr/src/app/src
+    command: npm run start:dev
+  
+  coin_prices_microservice:
+    build: ./coin-prices-service
+    environment:
+      - BASE_URL=https://coinranking1.p.rapidapi.com
+      - X_RapidAPI_Key=10945e0475msh6ddc41ee9afb47fp1e3473jsn34f4dd5f3052
+      - X_RapidAPI_Host=coinranking1.p.rapidapi.com
+    volumes:
+      - ./coin-prices-service/src:/usr/src/app/src
+    command: npm run start:dev
+
+  gateway:
+    build: ./graphql-federation-gateway
+    ports:
+      - 3000:3000
+    # networks:
+    #   - app-network
+    volumes:
+      - ./graphql-federation-gateway/src:/usr/src/app/src
+    command: npm run start:dev
+
+  react-app:
+    build: C:/WebSiteAlAlim/frontend_clean_architecture
+    ports:
+      - 5000:5000
+    # networks:
+    #   - app-network
+    volumes:
+      - C:/WebSiteAlAlim/frontend_clean_architecture/src/:/usr/src/app/src
+    command: npm start
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - 5050:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: password
+
+  mongo-express:
+    image: mongo-express
+    depends_on:
+      - assets_mongodb
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=assets_mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=mongo
+      - ME_CONFIG_BASICAUTH_PASSWORD=password
+    ports:
+      - 8081:8081
+
+  mongo-express-backtesting:
+    image: mongo-express
+    depends_on:
+      - backtesting_mongodb
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=backtesting_mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=mongo
+      - ME_CONFIG_BASICAUTH_PASSWORD=password
+    ports:
+      - 8082:8081
+
+  rabbitmq:
+    image: rabbitmq:management
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=rabbitmq
+      - RABBITMQ_DEFAULT_PASS=password
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit disk_free_limit 2147483648
+    volumes:
+      - ./rabbitmq:/var/lib/rabbitmq
+    ports:
+      - 15672:15672
+      - 5672:5672
+
+volumes:
+  users_database:
+  drawn_objects_database:
+  buy_orders_database:
+  assets_mongo_databse:
+  backtesting_mongo_database:
+  rabbitmq:
+
+# networks:
+#   app-network:
+#     driver: bridge
